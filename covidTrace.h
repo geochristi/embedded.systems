@@ -2,12 +2,22 @@
 // #define QUEUESIZE 20
 
 
-#define QUEUESIZE 5
+#define QUEUESIZE 40
 
+// typedef struct {
+//   struct timeval t;
+//   int mac;
+// } close_contact;
 typedef struct {
+  int buf[QUEUESIZE];
+  long head, tail;
+  int full, empty, mac;
   struct timeval t;
-  int mac;
-} new_contact;
+  pthread_mutex_t *mut;
+  pthread_cond_t *notFull, *notEmpty;
+  //contact contact[QUEUESIZE];  //
+} close_contact;
+
 typedef struct {
   void * (*work)(void *);
   void * arg;
@@ -29,8 +39,11 @@ typedef struct {
 queue *queueInit (void);
 void queueDelete (queue *q);
 void queueAdd (queue *q, int mac);//, new_contact new);
-void queueDel (queue *q, int *out);
+void queueDel (queue *q);
 
+close_contact *closeContactInit(void);
+void closeContactDelete(close_contact *cont);
+void closeContactAdd(close_contact *cont);
 // void *producer (void *args);
 // void *consumer (void *args);
 

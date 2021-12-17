@@ -4,7 +4,7 @@
 // #include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include "covidTrace.h"
 // #include <stdbool.h>
 
@@ -13,58 +13,69 @@
 // #define ONE_SECOND 1
 // #define ADDRESSES 10
 
-// struct timeval t1, t2;
-// float t;
-// int addr[TEN_SECONDS];
+void find_close_contacts(queue *addr) {
+    int i = addr->tail;
+    //printf("i %d and head %d\n ",i,addr->head);
+    while(i != addr->head){
+        //printf("i %d",i);
+        if (addr->contact[addr->head].mac == addr->contact[i].mac){
+            float timestamp;
+            timestamp = (addr->contact[i].t.tv_usec - addr->contact[addr->head].t.tv_usec)/1.0e6 + (addr->contact[i].t.tv_sec - addr->contact[addr->head].t.tv_sec);
+            printf("timestamp %fsec of mac %i\n", timestamp, addr->contact[addr->head].mac);
+            if (timestamp >20) {
+                printf("more than 20s %f\n",timestamp);
+                queueDel(addr);
 
-void *search(void *addr){
-    
+            } else if (timestamp > 4) {
+                printf("edw prepei na swsoume se close contacts kai na fugei to mac %i\n",addr->contact[i].mac);
+                queueDel(addr);
+
+            }
+            break;
+        } else {
+            i--;
+            // printf("i %d",i);
+        }
+    }
 }
+
 //find mac address.. fantazomai me bluetooth kai tha einai 48bit
 int get_mac(){  
-    int mac = 2;//(rand()%(6-1+1))+1;
+    int mac = (rand()%(6-1+1))+1;
     return mac;
 }
 
-void *find_mac(void *addr, pthread_t tid){
+void *find_mac(void *addr){
     int mac;
     mac = get_mac();
-    printf("mac %d\n",mac);
+    //printf("mac %d\n",mac);
     //pthread_create
     //adds a cell in the queue
     queue *addresses;
     addresses = (queue *)addr;
     
-    struct timeval t1;
+    //struct timeval t1;
     
-    //dokimi
-    // new_contact **new;
-    // gettimeofday(&new.t, NULL);
-    // new.mac=mac;
-    // printf("time  %f\n",new.t.tv_usec/1.0e6);
+    pthread_mutex_lock(addresses->mut);
+    queueAdd(addresses,mac);
+    pthread_mutex_unlock(addresses->mut);
 
-    //if (mac != addresses->contact->mac) {
-        pthread_mutex_lock(addresses->mut);
-        queueAdd(addresses,mac);
-        pthread_mutex_unlock(addresses->mut);
-        //gettimeofday(&addresses->contact[addresses->tail].t, NULL);
-        //printf("Time of the %i mac %i is %f s\n",addresses->tail, mac, addresses->contact[addresses->tail].t.tv_usec/1.0e6 );
-    //}
 }
 
 //ten seconds delay
-void *timer(void *addr, pthread_t tid){
+void *timer(void *addr){
     int distance = rand()%10;
-            struct timeval t1;
+    //printf("distance %i\n", distance);
+    // struct timeval t1;
 
-    gettimeofday(&t1, NULL);
-    printf(" %f s\n",t1.tv_usec/1.0e6);
+    // gettimeofday(&t1, NULL);
+    // printf(" %f s\n",t1.tv_usec/1.0e6);
     sleep(1);
 
     if (distance < MIN_DIST) {
         //pthread_create(&tid, NULL, search, addr);
         //printf("created thread %zu\n", tid);
-        find_mac(addr, tid);
+        find_mac(addr);
     }
 
 
@@ -73,23 +84,38 @@ void *timer(void *addr, pthread_t tid){
 int main(void) {
 
     queue *addresses;  
-  
+    close_contact *closeContacts;
+    
     addresses = queueInit();   // initialize queue
     if (addresses ==  NULL) {
         fprintf (stderr, "main: Queue Init failed.\n");
         exit (1);
     }
+
+    closeContacts = closeContactInit();
+    if (closeContacts == NULL) {
+        fprintf(stderr, "close Contacts Init failed\n");
+        exit(1);
+    }
     
     int counter = 0;  // kai auto theoritika den xreiazetai
-    pthread_t tid;
-    while (counter < 5){   //auto thewritika den tha stamataei
+    //pthread_t tid;
+    while (counter < 50){   //auto thewritika den tha stamataei
         //pthread_create(&tid, NULL, timer, addresses);
-        timer(addresses, tid);
+        timer(addresses);
         //printf("created thread %zu \n", tid);
+        
+        //every 22! seconds we need to check our contacts and add on close contacts
+        if (counter > 10){
+            find_close_contacts(addresses);
+        }
+        
         counter++; // kai auto theoritika den xreiazetai
+        
     }
     
     queueDelete(addresses);
+    closeContactDelete(closeContacts);
     return 0;
 }
 
