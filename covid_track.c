@@ -4,7 +4,7 @@
 // #include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
-//#include <sys/time.h>
+#include <sys/time.h>
 #include "covidTrace.h"
 // #include <stdbool.h>
 
@@ -13,48 +13,66 @@
 // #define ONE_SECOND 1
 // #define ADDRESSES 10
 
+void save_close_contact(queue *addr) {
+    
+}
+
 void find_close_contacts(queue *addr) {
-    int i = addr->tail;
+    long i = addr->tail;
+    //int flag = 0;
+    float timestamp;
     //printf("i %d and head %d\n ",i,addr->head);
+    
     while(i != addr->head){
         //printf("i %d",i);
+
         if (addr->contact[addr->head].mac == addr->contact[i].mac){
-            float timestamp;
+         
             timestamp = (addr->contact[i].t.tv_usec - addr->contact[addr->head].t.tv_usec)/1.0e6 + (addr->contact[i].t.tv_sec - addr->contact[addr->head].t.tv_sec);
             printf("timestamp %fsec of mac %i\n", timestamp, addr->contact[addr->head].mac);
-            if (timestamp >20) {
+            if (timestamp>20) {
                 printf("more than 20s %f\n",timestamp);
                 queueDel(addr);
-
             } else if (timestamp > 4) {
                 printf("edw prepei na swsoume se close contacts kai na fugei to mac %i\n",addr->contact[i].mac);
+                save_close_contact(addr);
                 queueDel(addr);
 
             }
             break;
         } else {
             i--;
-            // printf("i %d",i);
+            if (i < 0){
+                i = QUEUESIZE;
+            }
+
+            //printf("addr->head %d and addr->tail %d and i %d\n", addr->head,addr->tail,i);
         }
+    }
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    //printf("time passed from head is %f\n", ( t.tv_usec-addr->contact[addr->head].t.tv_usec)/1.0e6 + t.tv_sec-addr->contact[addr->head].t.tv_sec);
+
+    //delete contact if it stays on the queue for more than 20 minutes
+    if ((( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec) > 22){  //afinw perithwrio .. kanonika thelei 20
+        queueDel(addr);
+        printf("Diagrapsame gt einai panw apo 20 sec edw %f\n",( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec);
     }
 }
 
 //find mac address.. fantazomai me bluetooth kai tha einai 48bit
 int get_mac(){  
-    int mac = (rand()%(6-1+1))+1;
+    int mac = (rand()%(70-1+1))+1;
     return mac;
 }
 
 void *find_mac(void *addr){
     int mac;
     mac = get_mac();
-    //printf("mac %d\n",mac);
-    //pthread_create
+
     //adds a cell in the queue
     queue *addresses;
     addresses = (queue *)addr;
-    
-    //struct timeval t1;
     
     pthread_mutex_lock(addresses->mut);
     queueAdd(addresses,mac);
@@ -100,17 +118,17 @@ int main(void) {
     
     int counter = 0;  // kai auto theoritika den xreiazetai
     //pthread_t tid;
-    while (counter < 50){   //auto thewritika den tha stamataei
+    while (1){//counter < 1000){   //auto thewritika den tha stamataei
         //pthread_create(&tid, NULL, timer, addresses);
         timer(addresses);
         //printf("created thread %zu \n", tid);
         
-        //every 22! seconds we need to check our contacts and add on close contacts
-        if (counter > 10){
+        //every 30-40 seconds (enough?) we need to check our contacts and add on close contacts
+        //if (counter > 10){
             find_close_contacts(addresses);
-        }
+        //}
         
-        counter++; // kai auto theoritika den xreiazetai
+        //counter++; // kai auto theoritika den xreiazetai
         
     }
     
