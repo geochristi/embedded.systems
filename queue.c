@@ -93,15 +93,27 @@ void closeContactDelete(close_contact *cont) {
   free (cont->notEmpty);
   free (cont);
 }
-void closeContactAdd(close_contact *cont) {
+void closeContactAdd(close_contact *cont, queue *addr, int i) {
   
-  
+  cont->contact[cont->tail].mac = addr->contact[i].mac;
+  //printf("addr mac %d and contact mac is %d \n", addr->contact[i].mac,cont->contact[cont->tail].mac );
+  cont->contact[cont->tail].t = addr->contact[i].t;
   cont->tail++;
-  if (cont->tail == QUEUESIZE)
+  if (cont->tail == CLOSE_CONTACTS)
     cont->tail = 0;
   if (cont->tail == cont->head)
     cont->full = 1;
   cont->empty = 0;
 
+  return;
+}
+void closeContactDel (close_contact *cont){
+
+  cont->head++;
+  if (cont->head == CLOSE_CONTACTS)
+    cont->head = 0;
+  if (cont->head == cont->tail)
+    cont->empty = 1;
+  cont->full = 0;
   return;
 }

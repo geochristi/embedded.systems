@@ -13,11 +13,38 @@
 // #define ONE_SECOND 1
 // #define ADDRESSES 10
 
-void save_close_contact(queue *addr) {
-    
+void delete_close_contacts(close_contact *close_cont) {
+    long i = close_cont->head;
+    struct timeval t1;
+    gettimeofday(&t1, NULL);
+    while(i != close_cont->tail){
+        //if timestamp of close contact is larger than 14 days then delete ...... HERE 8 MINUTES
+        if (((t1.tv_usec - close_cont->contact[close_cont->head].t.tv_usec)/1.0e6 + t1.tv_sec - close_cont->contact[close_cont->head].t.tv_sec) < 480) {
+            break; //if the first one is less than 14 days then the next one is for sure less than that
+        } else {
+            printf("It's been 8 minutes mac %d SALUT AND GOODBYE \n", close_cont->contact[close_cont->head].mac);
+
+            closeContactDel(close_cont);
+            i++; //check the next contact
+            if (i > CLOSE_CONTACTS){
+                i = 0;
+            }
+        }
+    }
 }
 
-void find_close_contacts(queue *addr) {
+
+void save_close_contact(queue *addr, close_contact *close_cont, long i) {
+    
+    pthread_mutex_lock(close_cont->mut);
+    closeContactAdd(close_cont, addr, i);
+    printf("mac #%d is a close contact to me \n", close_cont->contact[close_cont->tail-1].mac);  //-1 gt auxanoume thn oura
+    pthread_mutex_unlock(close_cont->mut);
+    
+
+}
+
+void find_close_contacts(queue *addr, close_contact *close_cont) {
     long i = addr->tail;
     //int flag = 0;
     float timestamp;
@@ -35,7 +62,7 @@ void find_close_contacts(queue *addr) {
                 queueDel(addr);
             } else if (timestamp > 4) {
                 printf("edw prepei na swsoume se close contacts kai na fugei to mac %i\n",addr->contact[i].mac);
-                save_close_contact(addr);
+                save_close_contact(addr, close_cont, i);
                 queueDel(addr);
 
             }
@@ -54,7 +81,7 @@ void find_close_contacts(queue *addr) {
     //printf("time passed from head is %f\n", ( t.tv_usec-addr->contact[addr->head].t.tv_usec)/1.0e6 + t.tv_sec-addr->contact[addr->head].t.tv_sec);
 
     //delete contact if it stays on the queue for more than 20 minutes
-    if ((( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec) > 22){  //afinw perithwrio .. kanonika thelei 20
+    if ((( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec) > 40){  //afinw perithwrio .. kanonika thelei 20min
         queueDel(addr);
         printf("Diagrapsame gt einai panw apo 20 sec edw %f\n",( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec);
     }
@@ -62,7 +89,7 @@ void find_close_contacts(queue *addr) {
 
 //find mac address.. fantazomai me bluetooth kai tha einai 48bit
 int get_mac(){  
-    int mac = (rand()%(70-1+1))+1;
+    int mac = (rand()%(60-1+1))+1;
     return mac;
 }
 
@@ -83,16 +110,11 @@ void *find_mac(void *addr){
 //ten seconds delay
 void *timer(void *addr){
     int distance = rand()%10;
-    //printf("distance %i\n", distance);
-    // struct timeval t1;
 
-    // gettimeofday(&t1, NULL);
-    // printf(" %f s\n",t1.tv_usec/1.0e6);
     sleep(1);
 
     if (distance < MIN_DIST) {
-        //pthread_create(&tid, NULL, search, addr);
-        //printf("created thread %zu\n", tid);
+
         find_mac(addr);
     }
 
@@ -100,6 +122,8 @@ void *timer(void *addr){
 }
 
 int main(void) {
+
+    struct timeval delete_cont, count;
 
     queue *addresses;  
     close_contact *closeContacts;
@@ -118,130 +142,30 @@ int main(void) {
     
     int counter = 0;  // kai auto theoritika den xreiazetai
     //pthread_t tid;
+
+    gettimeofday(&delete_cont, NULL);
     while (1){//counter < 1000){   //auto thewritika den tha stamataei
         //pthread_create(&tid, NULL, timer, addresses);
+        
+        //10 seconds delay and search for mac addresses near you
         timer(addresses);
-        //printf("created thread %zu \n", tid);
-        
-        //every 30-40 seconds (enough?) we need to check our contacts and add on close contacts
-        //if (counter > 10){
-            find_close_contacts(addresses);
-        //}
-        
+
+        //find if a contact is a close one
+        find_close_contacts(addresses,closeContacts);
+
         //counter++; // kai auto theoritika den xreiazetai
         
+        //gettimeofday(&count, NULL);
+        //delete close contacts after 14 days (3 minutes here)
+        // if( ((count.tv_usec-closeContacts->contact[closeContacts->head].t.tv_usec)/1.0e6 + count.tv_sec-closeContacts->contact[closeContacts->head].t.tv_sec) > 180) {
+        //     printf("deleting close contact's mac #%d because it's been a while \n", closeContacts->contact[closeContacts->tail].mac);
+        //     closeContactDel(closeContacts);
+        // }
+
+        delete_close_contacts(closeContacts);
     }
     
     queueDelete(addresses);
     closeContactDelete(closeContacts);
     return 0;
 }
-
-
-// void define_addr(void) {
-//     for (int i=0; i<10; i++){
-//         if (i < 5) {
-//             addr[i] = 1;
-//         } else {
-//             addr[i] = 2;
-//         }
-//     }
-// }
-
-// int main () {
-
-//     define_addr();
-
-//     bool test;
-
-//     struct queue *fifo;  
-  
-//     fifo = queueInit ();   // initialize queue
-//     if (fifo ==  NULL) {
-//         fprintf (stderr, "main: Queue Init failed.\n");
-//         exit (1);
-//     }
-
-
-//     int done = 10;
-//     while (done) {
-   
-//         timer(fifo);
-
-//         //as to pros to paron
-//         if (done == 5) {
-//             pthread_t tid;
-//             pthread_create(&tid, NULL, &check_contacts,NULL);
-//         }
-//         // if (distance <= MIN_DIST) {    //logika an macaddress == traceable
-//         //     BTnearMe();
-//               // test = testCOVID();
-//         // }
-//         printf("until ending %d\n", done);
-//         --done;
-//     }
-//     if (test == 1) {
-//         printf("ITS POSITIVE STAY AWAY\n");
-//     } else {
-//         printf("ITS NEGATIVE you can hang out with this person\n");
-//     }
-
-
-//     queueDelete (fifo);
-//     return 0;
-// }
-
-
-// //function that waits for 1 sec and then calls the search function
-// void timer(struct queue *q){
-
-//     sleep(ONE_SECOND);  //we need 10 seconds
-//     search(q);  // search if there is a device near you
-// }
-
-// //
-// void search(struct queue *q) {  // an brei address prepei na ftiaxnei thread? wste na girnaei to programma sto timer
-    
-//     int distance=rand()%10;  //make a random number for the distance in the range of [0,20]
-//     //printf("distance %f \n", distance);
-//     if (distance <= MIN_DIST) {    //logika an macaddress == traceable
-        
-//         pthread_t tid;
-//         pthread_create(&tid, NULL, &BTnearMe, distance);
-//         printf("created thread %u \n", tid);
-//         //pthread_exit(NULL);
-//         //BTnearMe();  //find their mac address
-
-//     }
-// }
-
-
-// struct address *BTnearMe(int dist) {
-
-//     printf("there is a traceable device near you\n");
-//     struct address* contact = (struct address*)malloc(sizeof(struct address));
-
-//     contact->macadress = addr[dist];//rand();//%ADDRESSES;      //random
-//                                 //kanonika epistrefei gnwsti timi apo sinolo timwn des to
-//     //printf("the mac is %llu \n", mac_address->macadress);
-//     contact->duration_start = gettimeofday(&t1, NULL); 
-//     t = (double)(t1.tv_usec/1.0e6);
-//     //sleep(3);
-//     printf("time of contact %f\n", t );
-    
-// }
-
-// void check_contacts (void){
-
-// }
-
-
-
-// bool testCOVID(){
-//     printf("has this person a negative or a positive test?\n");
-//     return 1;
-// }
-
-// void upladContacts (int* macaddress) {
-
-// }
