@@ -3,13 +3,13 @@
 
 
 #define QUEUESIZE 40
-#define CLOSE_CONTACTS 1200
+#define CLOSE_CONTACTS 10
 // typedef struct {
 //   struct timeval t;
 //   int mac;
 // } close_contact;
 typedef struct {
-  int i;
+  //int i;
   struct timeval t;
   int mac; // must be 48bit
 } contact;

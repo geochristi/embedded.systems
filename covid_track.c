@@ -1,17 +1,55 @@
 // COVID Tracking
 #include <stdio.h>
 #include <stdlib.h>
-// #include <stdbool.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include "covidTrace.h"
-// #include <stdbool.h>
 
 #define MIN_DIST 5
 // #define TEN_SECONDS 10
 // #define ONE_SECOND 1
 // #define ADDRESSES 10
+
+void save_server(close_contact *close_cont, FILE *f){
+
+    int i = close_cont->head;
+
+    f = fopen("close_contacts.bin","ab");
+    if (f == NULL) {
+        fprintf(stderr, "failed to make file");
+        exit(1);
+    }
+    while(i != close_cont->tail){
+        
+        printf("mac = %d\n", close_cont->contact[i].mac);
+                   
+        //prostetei 6 midenika meta to mac kai ta swzei se hex?
+        fwrite(&close_cont->contact[i], sizeof(int), 1, f);
+        //fwrite(&close_cont->contact[i].t.tv_usec/1.0e6, sizeof(float),1,f);
+        //fwrite(&close_cont->contact[i],sizeof(contact),1,f);
+                    //fread(&j, sizeof(int), 1, f);
+                    //printf("%d and \n", j);
+        
+        //den xerw an xreiazetai gt ana 14 meres diagrafontai automata  
+        closeContactDel(close_cont);
+                
+        i++;
+        if (i > CLOSE_CONTACTS){
+            i = 0;
+        }
+    }
+
+
+    fclose(f);
+}
+
+
+bool testCOVID(){
+    return rand() % 2;
+}
+
 
 void delete_close_contacts(close_contact *close_cont) {
     long i = close_cont->head;
@@ -38,7 +76,7 @@ void save_close_contact(queue *addr, close_contact *close_cont, long i) {
     
     pthread_mutex_lock(close_cont->mut);
     closeContactAdd(close_cont, addr, i);
-    printf("mac #%d is a close contact to me \n", close_cont->contact[close_cont->tail-1].mac);  //-1 gt auxanoume thn oura
+    //printf("mac #%d is a close contact to me \n", close_cont->contact[close_cont->tail-1].mac);  //-1 gt auxanoume thn oura
     pthread_mutex_unlock(close_cont->mut);
     
 
@@ -56,12 +94,12 @@ void find_close_contacts(queue *addr, close_contact *close_cont) {
         if (addr->contact[addr->head].mac == addr->contact[i].mac){
          
             timestamp = (addr->contact[i].t.tv_usec - addr->contact[addr->head].t.tv_usec)/1.0e6 + (addr->contact[i].t.tv_sec - addr->contact[addr->head].t.tv_sec);
-            printf("timestamp %fsec of mac %i\n", timestamp, addr->contact[addr->head].mac);
+            //printf("timestamp %fsec of mac %i\n", timestamp, addr->contact[addr->head].mac);
             if (timestamp>20) {
-                printf("more than 20s %f\n",timestamp);
+                //printf("more than 20s %f\n",timestamp);
                 queueDel(addr);
             } else if (timestamp > 4) {
-                printf("edw prepei na swsoume se close contacts kai na fugei to mac %i\n",addr->contact[i].mac);
+                printf("edw prepei na swsoume se close contacts kai na fugei to mac %d\n",addr->contact[i].mac);
                 save_close_contact(addr, close_cont, i);
                 queueDel(addr);
 
@@ -83,7 +121,7 @@ void find_close_contacts(queue *addr, close_contact *close_cont) {
     //delete contact if it stays on the queue for more than 20 minutes
     if ((( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec) > 40){  //afinw perithwrio .. kanonika thelei 20min
         queueDel(addr);
-        printf("Diagrapsame gt einai panw apo 20 sec edw %f\n",( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec);
+        //printf("Diagrapsame gt einai panw apo 20 sec edw %f\n",( t.tv_usec - addr->contact[i].t.tv_usec)/1.0e6 + t.tv_sec - addr->contact[i].t.tv_sec);
     }
 }
 
@@ -123,10 +161,13 @@ void *timer(void *addr){
 
 int main(void) {
 
-    struct timeval delete_cont, count;
-
+    struct timeval test_time, t1;
+    bool test;
+    FILE *f;
     queue *addresses;  
     close_contact *closeContacts;
+    
+
     
     addresses = queueInit();   // initialize queue
     if (addresses ==  NULL) {
@@ -140,10 +181,10 @@ int main(void) {
         exit(1);
     }
     
-    int counter = 0;  // kai auto theoritika den xreiazetai
+    //int counter = 0;  // kai auto theoritika den xreiazetai
     //pthread_t tid;
-
-    gettimeofday(&delete_cont, NULL);
+    int i=0;
+    gettimeofday(&test_time, NULL);
     while (1){//counter < 1000){   //auto thewritika den tha stamataei
         //pthread_create(&tid, NULL, timer, addresses);
         
@@ -155,14 +196,41 @@ int main(void) {
 
         //counter++; // kai auto theoritika den xreiazetai
         
-        //gettimeofday(&count, NULL);
-        //delete close contacts after 14 days (3 minutes here)
-        // if( ((count.tv_usec-closeContacts->contact[closeContacts->head].t.tv_usec)/1.0e6 + count.tv_sec-closeContacts->contact[closeContacts->head].t.tv_sec) > 180) {
-        //     printf("deleting close contact's mac #%d because it's been a while \n", closeContacts->contact[closeContacts->tail].mac);
-        //     closeContactDel(closeContacts);
-        // }
-
+        // delete close contacts after 14 days
         delete_close_contacts(closeContacts);
+
+
+       //every 4 hours does a test ....... HERE 6 MINUTES
+       gettimeofday(&t1, NULL);
+       
+        if (((t1.tv_usec - test_time.tv_usec)/1.0e6 + t1.tv_sec - test_time.tv_sec)  > 60){
+           test = testCOVID();
+           //int j;
+           if (test == 0) {
+               printf("I AM POSITIVE STAY AWAY\n");
+               save_server(closeContacts, f);
+
+               
+           } else {
+               printf("MY TEST WAS NEGATIVE! LET'S HUG\n");
+
+           }
+           gettimeofday(&test_time, NULL);  // initialize again
+            
+            
+            // int num_upl = bin_file_size("out/close_contacts.bin")/sizeof(double);
+            // contact* up_contact =(contact*)malloc(num_upl*sizeof(double));
+
+            // f=fopen("close_contacts.bin","rb");
+            // unsigned char buffer[10];
+            // fread(num_upl, sizeof(contact),num_upl,f);
+            // //for(int j = 0; j<10; j++)
+            //  //   printf("%u ", buffer[i]); // prints a series of bytes
+            // fclose(f);
+        
+        }
+        
+
     }
     
     queueDelete(addresses);
