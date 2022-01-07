@@ -35,6 +35,10 @@ typedef struct {
   contact contact[QUEUESIZE];  //
 } queue;
 
+struct together{
+  queue *addresses;
+  close_contact *contact;
+};
 
 queue *queueInit (void);
 void queueDelete (queue *q);
@@ -45,45 +49,4 @@ close_contact *closeContactInit(void);
 void closeContactDelete(close_contact *cont);
 void closeContactAdd(close_contact *cont, queue *addr, int i);
 void closeContactDel (close_contact *cont);
-
-// void *producer (void *args);
-// void *consumer (void *args);
-
-
-// typedef struct {
-//   void * (*work)(void *);
-//   void * arg;
-// } workFunction;
-
-// struct queue{
-//   int buf[QUEUESIZE];
-//   long head, tail;
-//   int full, empty;
-//   pthread_mutex_t *mut;
-//   pthread_cond_t *notFull, *notEmpty;
-//   workFunction work[QUEUESIZE];  //
-// } ;
-
-// struct address{
-//     unsigned long long macadress : 48;  //gt :? 
-//                                         // episis einai 48?
-//     //int add;
-//     double duration_start;
-//     double duration_finish;
-// } ;
-
-
-// struct queue *queueInit (void);
-// void queueDelete (struct queue *q);
-// void queueAdd (struct queue *q, int in);
-// void queueDel (struct queue *q, int *out);
-
-
-
-// struct address *BTnearMe(int i);  //macaddress BTnearMe()
-// bool testCOVID(); 
-// void upladContacts (int* macaddress);
-// void timer(struct queue *q);
-// void search(struct queue *q);
-// void check_contacts();
-
+void closeContactAddThread(void *arg, long i);

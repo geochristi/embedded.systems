@@ -107,6 +107,24 @@ void closeContactAdd(close_contact *cont, queue *addr, int i) {
 
   return;
 }
+void closeContactAddThread(void *arg, long i){
+    struct together *args;
+    args = arg;
+
+    //args->contact->contact[args->contact->tail].mac = args->addresses->contact[i].mac;
+    //printf("addr mac %d and contact mac is %d \n", addr->contact[i].mac,cont->contact[cont->tail].mac );
+    //args->contact->contact[args->contact->tail].t = args->addresses->contact[i].t;
+    args->contact->contact[args->contact->tail] = args->addresses->contact[i];
+    args->contact->tail++;
+    if (args->contact->tail == CLOSE_CONTACTS)
+      args->contact->tail = 0;
+    if (args->contact->tail == args->contact->head)
+      args->contact->full = 1;
+    args->contact->empty = 0;
+
+    return;
+}
+
 void closeContactDel (close_contact *cont){
 
   cont->head++;
