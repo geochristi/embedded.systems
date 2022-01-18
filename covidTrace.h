@@ -2,16 +2,16 @@
 // #define QUEUESIZE 20
 
 
-#define QUEUESIZE 40
+#define QUEUESIZE 400000
 #define CLOSE_CONTACTS 1200
-// typedef struct {
-//   struct timeval t;
-//   int mac;
-// } close_contact;
+
 typedef struct {
-  int i;
+  //int i;
   struct timeval t;
-  int mac; // must be 48bit
+  //int mac; // must be 48bit
+  //unit64_t macaddress: 48;
+  unsigned long long mac : 48;
+
 } contact;
 
 
@@ -42,7 +42,7 @@ struct together{
 
 queue *queueInit (void);
 void queueDelete (queue *q);
-void queueAdd (queue *q, int mac);//, new_contact new);
+void queueAdd (queue *q, unsigned long long mac);//, new_contact new);
 void queueDel (queue *q);
 
 close_contact *closeContactInit(void);

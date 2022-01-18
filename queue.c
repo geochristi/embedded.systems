@@ -36,7 +36,7 @@ void queueDelete (queue *q)
   free (q);
 }
 
-void queueAdd (queue *q, int mac)//, new_contact new)
+void queueAdd (queue *q, unsigned long long  mac)//, new_contact new)
 {
   //add contact to queue
   q->contact[q->tail].mac = mac;
