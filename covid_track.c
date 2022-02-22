@@ -18,14 +18,14 @@
 #define MIN_DIST 5
 // #define TEN_SECONDS 10
 // #define ONE_SECOND 1
-#define ADDRESSES 3
+#define ADDRESSES 2
 #define PORT 8080
 
 pthread_mutex_t lock, lock2;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t wait_timer, delete_close_wait;
 int counter =0, counter2 = 0, delete = 0, save =0;
 
-char IPs[ADDRESSES][16] = {"10.0.0.4", "10.0.90.15", "10.0.84.19"};
+char IPs[ADDRESSES][16] = {"10.0.84.19", "10.0.0.7"};
 
 void *server(){
     // INITIALISATION OF SERVER .. get ready to listen to messages
@@ -50,7 +50,8 @@ void *server(){
         exit(EXIT_FAILURE);
     }
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("10.0.0.7");  //to bind xreiazetai my ip exei kai entoli gia fill my ip
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    //address.sin_addr.s_addr = inet_addr("10.0.0.7");  //to bind xreiazetai my ip exei kai entoli gia fill my ip
     address.sin_port = htons( PORT );
 
     // Forcefully attaching socket to the port 8080
@@ -62,14 +63,16 @@ void *server(){
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0) {
-        perror("accept");
-        exit(EXIT_FAILURE);
+    while(1){
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+        valread = read( new_socket , buffer, 1024);
+        //printf("%s\n",buffer );
+        send(new_socket , hellomessage , strlen(hellomessage) , 0 );
+        //printf("pc : I notified them that I got the message\n");
     }
-    valread = read( new_socket , buffer, 1024);
-    printf("%s\n",buffer );
-    send(new_socket , hellomessage , strlen(hellomessage) , 0 );
-    printf("pc : I notified them that I got the message\n");
 
 }
 void save_server(void *arg, FILE *f, FILE *f2){
@@ -90,29 +93,39 @@ void save_server(void *arg, FILE *f, FILE *f2){
 
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
-    char *hellomessage = "pc: I am positive stay away";
+    char *hellomessage = " I am positive stay away";
     char buffer[1024] = {0};
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        //return -1;
-    }
-   
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+
        
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if(inet_pton(AF_INET, "10.0.84.19", &serv_addr.sin_addr)<=0) {
-        printf("\nInvalid address/ Address not supported \n");
-        //return -1;
-    }
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("\nConnection Failed \n");
-        //return -1;
-    }
-    send(sock , hellomessage , strlen(hellomessage) , 0 );
-    printf("pc: notified rasb that i am positive\n");
-    valread = read( sock , buffer, 1024);
-    printf("%s\n",buffer );
+    //for (int i =0; i < ADDRESSES; i++) {
+        //if (IPs[i] != htonl(INADDR_ANY)){
+
+        
+
+            if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                printf("\n Socket creation error \n");
+            //return -1;
+            }
+    
+            serv_addr.sin_family = AF_INET;
+            serv_addr.sin_port = htons(PORT);
+            if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+                printf("\nConnection Failed \n");
+                //return -1;
+                close(sock);
+            }   
+            // Convert IPv4 and IPv6 addresses from text to binary form
+            if(inet_pton(AF_INET, IPs[i], &serv_addr.sin_addr)<=0) {
+                printf("\nInvalid address/ Address not supported \n");
+                //return -1;
+            }
+
+            send(sock , hellomessage , strlen(hellomessage) , 0 );
+            printf("pc: notified %s rasb that i am positive\n", IPs[i]);
+            valread = read( sock , buffer, 1024);
+            printf("%s\n",buffer );
+        //}
+    //}
 
     while(i != close_cont->tail){
         
@@ -326,7 +339,7 @@ unsigned long long  get_mac(){
     //     printf("mac 2 = %llu\n",mac2);
     //     freeifaddrs(ifaddr);
     // }
-    return 0;
+    //return 0;
     return mac;
 }
 
