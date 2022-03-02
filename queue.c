@@ -36,12 +36,13 @@ void queueDelete (queue *q)
   free (q);
 }
 
-void queueAdd (queue *q, unsigned long long  mac)//, new_contact new)
+void queueAdd (queue *q, unsigned long long  mac, int pos)//, new_contact new)
 {
   //add contact to queue
   q->contact[q->tail].mac = mac;
   gettimeofday(&q->contact[q->tail].t, NULL);
-  //printf("Time of the %i mac %i is %f s\n",q->tail, mac, q->contact[q->tail].t.tv_usec/1.0e6 + q->contact[q->tail].t.tv_sec );
+  q->contact[q->tail].position = pos;
+  //printf("Time of the %i mac %llu is %f s\n",q->tail, mac, q->contact[q->tail].t.tv_usec/1.0e6 + q->contact[q->tail].t.tv_sec );
   //move queue's tail
   q->tail++;
   if (q->tail == QUEUESIZE)
@@ -98,6 +99,7 @@ void closeContactAdd(close_contact *cont, queue *addr, int i) {
   cont->contact[cont->tail].mac = addr->contact[i].mac;
   //printf("addr mac %d and contact mac is %d \n", addr->contact[i].mac,cont->contact[cont->tail].mac );
   cont->contact[cont->tail].t = addr->contact[i].t;
+  cont->contact[cont->tail].position = addr->contact[i].position;
   cont->tail++;
   if (cont->tail == CLOSE_CONTACTS)
     cont->tail = 0;

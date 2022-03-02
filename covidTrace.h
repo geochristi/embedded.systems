@@ -6,13 +6,17 @@
 #define CLOSE_CONTACTS 1200
 
 typedef struct {
-  //int i;
   struct timeval t;
-  //int mac; // must be 48bit
-  //unit64_t macaddress: 48;
   unsigned long long mac : 48;
-
+  int position;
+  //int sock;
+  //struct addrinfo **res;
 } contact;
+
+// typedef struct {
+//   int sock;
+//   size_t length;
+// } server_data;
 
 
 typedef struct {
@@ -42,7 +46,7 @@ struct together{
 
 queue *queueInit (void);
 void queueDelete (queue *q);
-void queueAdd (queue *q, unsigned long long mac);//, new_contact new);
+void queueAdd (queue *q, unsigned long long mac, int pos);//, new_contact new);
 void queueDel (queue *q);
 
 close_contact *closeContactInit(void);
