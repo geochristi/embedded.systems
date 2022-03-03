@@ -24,13 +24,14 @@
 #define TEST_TIME 100 // 4 hours
 #define ADDRESSES 11
 #define PORT 8080
+#define DEVICES 2   
 
 
 pthread_mutex_t lock, lock2, lock_test;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t wait_timer, delete_close_wait, test_wait;
-int counter =0, counter2 = 0, counter3=0;//, delete = 0, save =0;
-
-char IPs[ADDRESSES][16] = {"10.0.84.19", "10.0.0.7"};
+int counter =0, counter2 = 0, counter3=0, send_suc =0, send_Fail=0, get_suc =0;//, get_fail=0 ;
+FILE *num, *fail;
+char IPs[ADDRESSES][16] = {"10.0.90.15", "10.0.84.19"};
 //long long unsigned
 char Macs[ADDRESSES][48] ={"15","20","33", "78","144","54899", "5445645654", "65657687645", "54646" "b8:27:eb:8a:62:62", "94:0c:6d:8b:7e:10"};//{b827eb8a6262, 940c6d8b7e10}; //DEN DOULEUEI KALA
 
@@ -44,42 +45,50 @@ void *client(void *arg){
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
     char *send_message = "pc I am positive stay away";
-    // char buffer[1024] = {0};
 
-       
-    // //for (int i =0; i < ADDRESSES; i++) {
-    //     //if (IPs[i] != htonl(INADDR_ANY)){
+    // only had three devices
+    for(int i=0;i<DEVICES;i++){
+           
 
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            printf("\n Socket creation error \n");
+            //return -1;
+        }
         
+        // Convert IPv4 and IPv6 addresses from text to binary form
+        if(inet_pton(AF_INET, IPs[i], &serv_addr.sin_addr)<=0) {
+            printf("\nInvalid address/ Address not supported \n");
+            //return -1;
+        }
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(PORT);
+        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+            printf("\nConnection Failed \n");
+            send_Fail++;
+            //return -1;
+            close(sock);
+        } else {
+            send_suc++;
+        }
 
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        //return -1;
+
+        send(sock , send_message , strlen(send_message) , 0 );
+        
     }
-    
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if(inet_pton(AF_INET, "10.0.0.7", &serv_addr.sin_addr)<=0) {
-        printf("\nInvalid address/ Address not supported \n");
-        //return -1;
-    }
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("\nConnection Failed \n");
-        //return -1;
-        close(sock);
-    }   
 
-
-    send(sock , send_message , strlen(send_message) , 0 );
-    //printf("pc: notified rasb that i am positive\n");
-    //         valread = read( sock , buffer, 1024);
-    //         printf("%s\n",buffer );
-    //     //}
-    // //}
 }
 
-void save_server(void *arg, FILE *f){
+void save_server(void *arg){//, FILE *f){
+    num = fopen("success.bin","ab");
+    if (num == NULL) {
+        fprintf(stderr, "failed to make file");
+        exit(1);
+    }    
+    fail = fopen("fail.bin","ab");
+    if (num == NULL) {
+        fprintf(stderr, "failed to make file");
+        exit(1);
+    }
     close_contact *close_cont;
     close_cont = arg;
     int i = close_cont->head;
@@ -87,17 +96,26 @@ void save_server(void *arg, FILE *f){
 
     pthread_t client_thread;
     pthread_create(&client_thread, NULL, client, close_cont);
-    while(i != close_cont->tail){
+    // while(i != close_cont->tail){
         
-        //prostetei 6 midenika meta to mac kai ta swzei se hex?  epishs an den ta diagrapseis sinexizoun na grafoun
-        fwrite(&close_cont->contact[i], sizeof(contact), 1, f); //auto swzei logika kai to timestamp
+    //     //prostetei 6 midenika meta to mac kai ta swzei se hex?  epishs an den ta diagrapseis sinexizoun na grafoun
+    //     fwrite(&close_cont->contact[i], sizeof(contact), 1, f); //auto swzei logika kai to timestamp
                 
-        i++;
-        if (i > CLOSE_CONTACTS){
-            i = 0;
-        }
-    }
+    //     i++;
+    //     if (i > CLOSE_CONTACTS){
+    //         i = 0;
+    //     }
+    // }
+    printf("think that they are succesfull: %d , unsuccesfull: %d\n", send_suc, send_Fail);
+    fwrite(&send_suc,sizeof(int),1,num);
+    fwrite(&send_Fail,sizeof(int),1,fail);
+    fprintf(fail, "IP is %s", IPs[0]);
     pthread_join(client_thread,NULL);
+    counter=0;
+    counter2=0;
+    counter3=0;
+    fclose(num);
+    fclose(fail);
 }
 
 // checks if my covid test is positive or negative
@@ -112,24 +130,26 @@ void *test(void *arg) {
         close_contact *close_cont;
         close_cont = arg;
         if (test_covid == 0) {
-            printf("I AM POSITIVE STAY AWAY\n");
-            f = fopen("close_contacts.bin","ab");
-            if (f == NULL) {
-                fprintf(stderr, "failed to make file");
-                exit(1);
-            }
-            save_server(close_cont, f);   
-            fclose(f);
+            //printf("I AM POSITIVE STAY AWAY\n");
+            // f = fopen("close_contacts.bin","ab");
+            // if (f == NULL) {
+            //     fprintf(stderr, "failed to make file");
+            //     exit(1);
+            // }
+            save_server(close_cont);//, f);   
+            //fclose(f);
             
         } else {
-            printf("MY TEST WAS NEGATIVE!\n");
+            //printf("MY TEST WAS NEGATIVE!\n");
         }
         pthread_mutex_unlock(&lock_test);
 
     }
 }
 // server function ready to accept messages
-void *server(){
+void *server(void *arg){
+    pthread_t client_thread;
+
     // INITIALISATION OF SERVER .. get ready to listen to messages
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
@@ -151,8 +171,8 @@ void *server(){
     }
 
     address.sin_family = AF_INET;
-    //address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_addr.s_addr = inet_addr("10.0.84.19");  //to bind xreiazetai my ip exei kai entoli gia fill my ip
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    //address.sin_addr.s_addr = inet_addr("10.0.84.19");  //to bind xreiazetai my ip exei kai entoli gia fill my ip
     address.sin_port = htons( PORT );
 
     // Forcefully attaching socket to the port 8080
@@ -172,6 +192,12 @@ void *server(){
         }
         valread = read(new_socket , received_message, 1024);
         printf("I received: %s\n",received_message );
+        get_suc++;
+        printf("Get messages sucess %d\n",get_suc);
+        // if (pthread_create(&client_thread, NULL, server, arg) != 0){
+        //     perror("Failed to create thread");
+        // }
+        // pthread_join(client_thread,NULL);
         //send(new_socket , hellomessage , strlen(hellomessage) , 0 );
         //printf("pc : I notified them that I got the message\n");
     }
@@ -453,7 +479,7 @@ int main(void) {
     pthread_cond_init(&test_wait, NULL);
 
         
-    if (pthread_create(&server_thread, NULL, server, NULL) != 0){
+    if (pthread_create(&server_thread, NULL, server, arg->contact) != 0){
         perror("Failed to create thread");
     }
     //10 seconds delay and search for mac addresses near you on repeat
