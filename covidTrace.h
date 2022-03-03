@@ -19,15 +19,15 @@ typedef struct {
 // } server_data;
 
 
-typedef struct {
-  int buf[CLOSE_CONTACTS];
-  long head, tail;
-  int full, empty, mac;
-  struct timeval t;
-  pthread_mutex_t *mut;
-  pthread_cond_t *notFull, *notEmpty;
-  contact contact[CLOSE_CONTACTS];  //
-} close_contact;
+// typedef struct {
+//   int buf[CLOSE_CONTACTS];
+//   long head, tail;
+//   int full, empty;
+//   struct timeval t;
+//   pthread_mutex_t *mut;
+//   pthread_cond_t *notFull, *notEmpty;
+//   contact contact[CLOSE_CONTACTS];  //
+// } close_contact;
 
 
 typedef struct {
@@ -41,7 +41,7 @@ typedef struct {
 
 struct together{
   queue *addresses;
-  close_contact *contact;
+  queue *contact;
 };
 
 queue *queueInit (void);
@@ -49,8 +49,8 @@ void queueDelete (queue *q);
 void queueAdd (queue *q, unsigned long long mac, int pos);//, new_contact new);
 void queueDel (queue *q);
 
-close_contact *closeContactInit(void);
-void closeContactDelete(close_contact *cont);
-void closeContactAdd(close_contact *cont, queue *addr, int i);
-void closeContactDel (close_contact *cont);
+// close_contact *closeContactInit(void);
+// void closeContactDelete(close_contact *cont);
+// void closeContactAdd(close_contact *cont, queue *addr, int i);
+// void closeContactDel (close_contact *cont);
 void closeContactAddThread(void *arg, long i);

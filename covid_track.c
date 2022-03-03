@@ -16,13 +16,13 @@
 #include <sys/socket.h>
 
 
-#define TEN_SECONDS 1 // NEEDS TO BE 10
+#define TEN_SECONDS 1 // 10
 #define CLOSE_CONTACT_TIME 13 //1320 seconds for 22 minutes / 10 (timer) 
 #define DELETE_CONTACT_TIME 120 //1209600 seconds for 14 days / 10(timer)
 #define UPPER_LIMIT 50 // 20 minutes
 #define LOWER_LIMIT 4 //4 minutes
 #define TEST_TIME 100 // 4 hours
-#define ADDRESSES 11
+#define ADDRESSES 10
 #define PORT 8080
 #define DEVICES 2   
 
@@ -31,91 +31,105 @@ pthread_mutex_t lock, lock2, lock_test;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t wait_timer, delete_close_wait, test_wait;
 int counter =0, counter2 = 0, counter3=0, send_suc =0, send_Fail=0, get_suc =0;//, get_fail=0 ;
 FILE *num, *fail;
-char IPs[ADDRESSES][16] = {"10.0.90.15", "10.0.84.19"};
+char IPs[ADDRESSES][16] = {"10.0.90.15", "10.0.84.9","10.0.84.5","10.0.84.11","10.0.84.19", "10.0.84.8"};
 //long long unsigned
 char Macs[ADDRESSES][48] ={"15","20","33", "78","144","54899", "5445645654", "65657687645", "54646" "b8:27:eb:8a:62:62", "94:0c:6d:8b:7e:10"};//{b827eb8a6262, 940c6d8b7e10}; //DEN DOULEUEI KALA
 
 void *client(void *arg){
-    close_contact *cont;
-    cont = arg;
 
-    int i = cont->contact->position;
-    //ara Ips[i]
-
+    int i = *((int*)arg);
+    
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
-    char *send_message = "pc I am positive stay away";
-
+    char *send_message = "pc I am covid positive or I have been in contact with a covid positive person";
+    struct timeval t1, t2;
     // only had three devices
-    for(int i=0;i<DEVICES;i++){
+    //for(int i=0;i<DEVICES;i++){
            
 
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             printf("\n Socket creation error \n");
-            //return -1;
         }
         
         // Convert IPv4 and IPv6 addresses from text to binary form
         if(inet_pton(AF_INET, IPs[i], &serv_addr.sin_addr)<=0) {
             printf("\nInvalid address/ Address not supported \n");
-            //return -1;
         }
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = htons(PORT);
         if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
             printf("\nConnection Failed \n");
             send_Fail++;
-            //return -1;
             close(sock);
         } else {
+            
+            gettimeofday(&t1, NULL);
             send_suc++;
+
         }
 
-
         send(sock , send_message , strlen(send_message) , 0 );
-        
-    }
+        gettimeofday(&t2, NULL);
+
+        printf("%f\n",( t2.tv_usec - t1.tv_usec)/1.0e6 + t2.tv_sec -t1.tv_sec);
 
 }
 
-void save_server(void *arg){//, FILE *f){
-    num = fopen("success.bin","ab");
-    if (num == NULL) {
-        fprintf(stderr, "failed to make file");
-        exit(1);
-    }    
-    fail = fopen("fail.bin","ab");
-    if (num == NULL) {
-        fprintf(stderr, "failed to make file");
-        exit(1);
-    }
-    close_contact *close_cont;
-    close_cont = arg;
-    int i = close_cont->head;
-
-
-    pthread_t client_thread;
-    pthread_create(&client_thread, NULL, client, close_cont);
-    // while(i != close_cont->tail){
-        
-    //     //prostetei 6 midenika meta to mac kai ta swzei se hex?  epishs an den ta diagrapseis sinexizoun na grafoun
-    //     fwrite(&close_cont->contact[i], sizeof(contact), 1, f); //auto swzei logika kai to timestamp
-                
-    //     i++;
-    //     if (i > CLOSE_CONTACTS){
-    //         i = 0;
-    //     }
+void save_server(void *arg){ 
+    // num = fopen("success.bin","ab");
+    // if (num == NULL) {
+    //     fprintf(stderr, "failed to make file");
+    //     exit(1);
+    // }    
+    // fail = fopen("fail.bin","ab");
+    // if (num == NULL) {
+    //     fprintf(stderr, "failed to make file");
+    //     exit(1);
     // }
+    queue *close_cont;
+    close_cont = arg;
+    int i = close_cont->tail;
+    
+    int flag1 =0, flag2=0;
+    while(i != close_cont->head) {
+        
+        pthread_t client_thread;
+        if ((close_cont->contact[i-1].position == 0)&&(flag1 == 0)){
+            
+            pthread_create(&client_thread, NULL, client, &close_cont->contact[i-1].position);
+            //fprintf(fail, "IP is %s", IPs[close_cont->contact[i-1].position]);
+            flag1 =1;
+            pthread_join(client_thread,NULL);
+
+        } else if((close_cont->contact[i-1].position == 4) && (flag2 == 0)){
+            pthread_create(&client_thread, NULL, client, &close_cont->contact[i-1].position);
+            //fprintf(fail, "IP is %s", IPs[close_cont->contact[i-1].position]);
+            flag2=1;
+            pthread_join(client_thread,NULL);
+
+        }
+        i--;
+        if (i<0){
+            i=CLOSE_CONTACTS;
+        }
+
+        // if i have already notify them i dont want to spam them
+        if ((flag1 ==1) && (flag2 ==1)){
+            break;
+        }
+
+    }
+    flag1 =0;
+    flag2 =0;
     printf("think that they are succesfull: %d , unsuccesfull: %d\n", send_suc, send_Fail);
-    fwrite(&send_suc,sizeof(int),1,num);
-    fwrite(&send_Fail,sizeof(int),1,fail);
-    fprintf(fail, "IP is %s", IPs[0]);
-    pthread_join(client_thread,NULL);
+    //fwrite(&send_suc,sizeof(int),1,num);
+    //fwrite(&send_Fail,sizeof(int),1,fail);
+ 
+
     counter=0;
     counter2=0;
-    counter3=0;
-    fclose(num);
-    fclose(fail);
+    //fclose(num);
+    //fclose(fail);
 }
 
 // checks if my covid test is positive or negative
@@ -127,25 +141,20 @@ void *test(void *arg) {
         pthread_cond_wait(&test_wait, &lock_test);
         //printf("Having a covid test\n");
         bool test_covid = rand()%2;
-        close_contact *close_cont;
+        queue *close_cont;
         close_cont = arg;
-        if (test_covid == 0) {
-            //printf("I AM POSITIVE STAY AWAY\n");
-            // f = fopen("close_contacts.bin","ab");
-            // if (f == NULL) {
-            //     fprintf(stderr, "failed to make file");
-            //     exit(1);
-            // }
-            save_server(close_cont);//, f);   
-            //fclose(f);
+        if (test_covid == 0) {        
+            //printf("My test was positive\n");
+            save_server(close_cont);
             
         } else {
             //printf("MY TEST WAS NEGATIVE!\n");
-        }
+        }   
         pthread_mutex_unlock(&lock_test);
 
     }
 }
+
 // server function ready to accept messages
 void *server(void *arg){
     pthread_t client_thread;
@@ -156,7 +165,7 @@ void *server(void *arg){
     int opt = 1; 
     int addrlen = sizeof(address);
     char received_message[2048] = {0}; 
-    //char *hellomessage = "pc: thanks for the notification"; //???????
+    //char *confirmation = "pc: thanks for the notification";
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -172,7 +181,7 @@ void *server(void *arg){
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_ANY);
-    //address.sin_addr.s_addr = inet_addr("10.0.84.19");  //to bind xreiazetai my ip exei kai entoli gia fill my ip
+    //address.sin_addr.s_addr = inet_addr("10.0.84.19");  
     address.sin_port = htons( PORT );
 
     // Forcefully attaching socket to the port 8080
@@ -194,11 +203,11 @@ void *server(void *arg){
         printf("I received: %s\n",received_message );
         get_suc++;
         printf("Get messages sucess %d\n",get_suc);
-        // if (pthread_create(&client_thread, NULL, server, arg) != 0){
-        //     perror("Failed to create thread");
-        // }
-        // pthread_join(client_thread,NULL);
-        //send(new_socket , hellomessage , strlen(hellomessage) , 0 );
+        if (pthread_create(&client_thread, NULL, server, arg) != 0){
+            perror("Failed to create thread");
+        }
+        pthread_join(client_thread,NULL);
+        //send(new_socket , confirmation , strlen(confirmation) , 0 );
         //printf("pc : I notified them that I got the message\n");
     }
 }
@@ -210,7 +219,7 @@ void *delete_close_contacts(void *arg){
         pthread_mutex_lock(&lock2);
         //printf("Waiting for 14 days to delete my close contacts...\n");
         pthread_cond_wait(&delete_close_wait, &lock2);
-        close_contact *close_cont;
+        queue *close_cont;
         close_cont = arg;
         long i = close_cont->head;
         struct timeval t1;
@@ -220,8 +229,8 @@ void *delete_close_contacts(void *arg){
             
             //if timestamp of close contact is larger than 14 days then delete 
             if (timestamp < DELETE_CONTACT_TIME) {
-                    //delete++;
-                    //printf("I have entered delete contacts %d times but i didnt have to\n", delete);    
+                
+                //printf("I have entered delete contacts %d times but i didnt have to\n", delete);    
                 break; //if the first one is less than 14 days then the next one is for sure less than that
             
             // delete close contacts if their timestamp is more than 14 days
@@ -232,7 +241,7 @@ void *delete_close_contacts(void *arg){
                     printf("queue for close contacts empty \n");
                     pthread_cond_wait(close_cont->notEmpty,close_cont->mut);
                 }
-                closeContactDel(close_cont);
+                queueDel(close_cont);
                 pthread_mutex_unlock(close_cont->mut);
                 pthread_cond_signal(close_cont->notFull);
 
@@ -257,7 +266,7 @@ void save_close_contact(void *arg, long i) {
         pthread_cond_wait(args->contact->notFull, args->contact->mut);
     }
     closeContactAddThread(args, i);
-    printf("mac #%llu is a close contact to me \n", args->contact->contact[args->contact->tail-1].mac);  //-1 gt auxanoume thn oura
+    //printf("mac #%llu is a close contact to me with position %d\n", args->contact->contact[args->contact->tail-1].mac, args->contact->contact[args->contact->tail-1].position);  // tail-1 because we have already increased the tail
     pthread_mutex_unlock(args->contact->mut);
     pthread_cond_signal(args->contact->notEmpty);
     
@@ -329,6 +338,7 @@ void *find_close_contacts(void *a){
                     
                         history = args->addresses->contact[args->addresses->head].mac;
                         save_close_contact(args, i);
+                        
                     }
                     pthread_mutex_lock(args->addresses->mut);
                     queueDel(args->addresses);
@@ -346,6 +356,7 @@ void *find_close_contacts(void *a){
                     i = QUEUESIZE;
                 }
             }
+        
         }   
         pthread_mutex_unlock(&lock);
 
@@ -361,33 +372,31 @@ void *find_mac(void *arg){
     if (rand()%8 == 1) {
         int i = rand()%ADDRESSES;   
         mac = (Macs[i]);
-        //mac = 855534166;
+
         /*
-            ΠΡΕΠΕΙ ΝΑ ΕΛΕΓΧΩ ΤΙΣ ΔΙΑΦΟΡΕΣ ΜΑΚ ΔΕΝ ΧΡΕΙΑΖΕΤΑΙ ΕΠΙΚΟΙΝΩΝΙΑ ΕΔΩ
-            check for mac addresses
+        find mac addresses of the devices that are actually connected to the network.
+       */
         
 
-        // struct ifaddrs *ifaddr=NULL;
-        // struct ifaddrs *ifa = NULL;
-        // int i = 0;
+        struct ifaddrs *ifaddr=NULL;
+        struct ifaddrs *ifa = NULL;
 
-        // if (getifaddrs(&ifaddr) == -1) {
-        //     perror("getifaddrs");
-        // } else {
-        //     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        //         if ((ifa->ifa_addr) && (ifa->ifa_addr->sa_family == AF_PACKET)) {
-        //             struct sockaddr_ll *s = (struct sockaddr_ll*)ifa->ifa_addr;
-        //             printf("%-8s ", ifa->ifa_name);
-        //             for (i=0; i <s->sll_halen; i++) {
-        //                 mac2 = printf("%02x%c", (s->sll_addr[i]), (i+1!=s->sll_halen)?':':'\n');
-        //             }
-        //         }
-        //     }
-        //     printf("mac 2 = %llu\n",mac2);
-        //     freeifaddrs(ifaddr);
-        // }
-        */
-        
+        if (getifaddrs(&ifaddr) == -1) {
+            perror("getifaddrs");
+        } else {
+            for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+                if ((ifa->ifa_addr) && (ifa->ifa_addr->sa_family == AF_PACKET)) {
+                    struct sockaddr_ll *s = (struct sockaddr_ll*)ifa->ifa_addr;
+                    //printf("%-8s ", ifa->ifa_name);
+                    for (int j=0; j <s->sll_halen; j++) {
+                        //printf("%02x%c", (s->sll_addr[j]), (j+1!=s->sll_halen)?':':'\n');
+                    }
+                }
+            }
+            
+            freeifaddrs(ifaddr);
+        }
+ 
         //adds a cell in the queue
         struct together *args;
         args = arg;
@@ -436,6 +445,7 @@ void *timer(void *arg){
     }
 
     counter3++;
+    // do a covid test every 4 hours
     if (counter3 > TEST_TIME){
         pthread_mutex_lock(&lock_test);
         //printf("It's been 4 hours, time for my test\n");
@@ -451,7 +461,7 @@ int main(void) {
     
 
     queue* addresses;  
-    close_contact* closeContacts;
+    queue* closeContacts;
     struct together *arg = malloc (sizeof (struct together));    
 
     addresses = queueInit();   // initialize queue
@@ -460,7 +470,7 @@ int main(void) {
         exit (1);
     }
 
-    closeContacts = closeContactInit();
+    closeContacts = queueInit();
     if (closeContacts == NULL) {
         fprintf(stderr, "close Contacts Init failed\n");
         exit(1);
@@ -514,6 +524,6 @@ int main(void) {
     pthread_cond_destroy(&test_wait);
 
     queueDelete(addresses);
-    closeContactDelete(closeContacts);
+    queueDelete(closeContacts);
     return 0;
 }

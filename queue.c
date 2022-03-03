@@ -66,49 +66,35 @@ void queueDel (queue *q)
 }
 
 
-close_contact *closeContactInit(void) {
-  close_contact *cont;
+// close_contact *closeContactInit(void) {
+//   close_contact *cont;
 
-  cont = (close_contact *)malloc (sizeof (close_contact));
-  if (cont == NULL) return (NULL);
+//   cont = (close_contact *)malloc (sizeof (close_contact));
+//   if (cont == NULL) return (NULL);
 
-  cont->empty = 1;
-  cont->full = 0;
-  cont->head = 0;
-  cont->tail = 0;
-  cont->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
-  pthread_mutex_init (cont->mut, NULL);
-  cont->notFull = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
-  pthread_cond_init (cont->notFull, NULL);
-  cont->notEmpty = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
-  pthread_cond_init (cont->notEmpty, NULL);
+//   cont->empty = 1;
+//   cont->full = 0;
+//   cont->head = 0;
+//   cont->tail = 0;
+//   cont->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
+//   pthread_mutex_init (cont->mut, NULL);
+//   cont->notFull = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
+//   pthread_cond_init (cont->notFull, NULL);
+//   cont->notEmpty = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
+//   pthread_cond_init (cont->notEmpty, NULL);
 	
-  return (cont);
-}
-void closeContactDelete(close_contact *cont) {
-  pthread_mutex_destroy (cont->mut);
-  free (cont->mut);	
-  pthread_cond_destroy (cont->notFull);
-  free (cont->notFull);
-  pthread_cond_destroy (cont->notEmpty);
-  free (cont->notEmpty);
-  free (cont);
-}
-void closeContactAdd(close_contact *cont, queue *addr, int i) {
-  
-  cont->contact[cont->tail].mac = addr->contact[i].mac;
-  //printf("addr mac %d and contact mac is %d \n", addr->contact[i].mac,cont->contact[cont->tail].mac );
-  cont->contact[cont->tail].t = addr->contact[i].t;
-  cont->contact[cont->tail].position = addr->contact[i].position;
-  cont->tail++;
-  if (cont->tail == CLOSE_CONTACTS)
-    cont->tail = 0;
-  if (cont->tail == cont->head)
-    cont->full = 1;
-  cont->empty = 0;
+//   return (cont);
+// }
+// void closeContactDelete(close_contact *cont) {
+//   pthread_mutex_destroy (cont->mut);
+//   free (cont->mut);	
+//   pthread_cond_destroy (cont->notFull);
+//   free (cont->notFull);
+//   pthread_cond_destroy (cont->notEmpty);
+//   free (cont->notEmpty);
+//   free (cont);
+// }
 
-  return;
-}
 void closeContactAddThread(void *arg, long i){
     struct together *args;
     args = arg;
@@ -127,13 +113,13 @@ void closeContactAddThread(void *arg, long i){
     return;
 }
 
-void closeContactDel (close_contact *cont){
+// void closeContactDel (close_contact *cont){
 
-  cont->head++;
-  if (cont->head == CLOSE_CONTACTS)
-    cont->head = 0;
-  if (cont->head == cont->tail)
-    cont->empty = 1;
-  cont->full = 0;
-  return;
-}
+//   cont->head++;
+//   if (cont->head == CLOSE_CONTACTS)
+//     cont->head = 0;
+//   if (cont->head == cont->tail)
+//     cont->empty = 1;
+//   cont->full = 0;
+//   return;
+// }
